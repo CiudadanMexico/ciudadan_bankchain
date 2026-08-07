@@ -1,0 +1,23 @@
+# dependencias
+node_modules/
+
+# entorno y secretos (NUNCA subir)
+.env
+.env.*
+!.env.example
+
+# identidad del nodo
+nodeWallet.json
+
+# logs
+*.log
+logs/
+nohup.out
+
+# sistema
+.DS_Store
+
+# temporales / cobertura
+coverage/
+.nyc_output/
+tmp/

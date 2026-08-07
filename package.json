@@ -1,0 +1,31 @@
+{
+  "name": "bankchain",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test",
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "crypto-js": "^4.2.0",
+    "dotenv": "^17.3.1",
+    "elliptic": "^6.6.1",
+    "express": "^5.2.1",
+    "uuid": "^13.0.0",
+    "ws": "^8.19.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  },
+  "nodemonConfig": {
+  "ignore": [
+    "nodeWallet.json",
+    "*.json"
+  ]
+}
+}
