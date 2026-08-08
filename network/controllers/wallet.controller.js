@@ -1,3 +1,6 @@
+const { parseAmount, assertToken, assertAddress } = require("../../core/amounts")
+const { logAction } = require("../middlewares/logger")
+
 exports.info = (req, res) => {
   res.json({
     success: true,
@@ -12,11 +15,16 @@ exports.mintTest = (req, res) => {
   try {
     const { address, amount, token } = req.body
 
-    req.blockchain.mint(address, amount, token || "LABORY")
+    const a = assertAddress(address)
+    const n = parseAmount(amount)
+    const t = assertToken(token || "LABORY")
+
+    req.blockchain.mint(a, n, t)
+    logAction("mint", { address: a, amount: n, token: t })
 
     res.json({
       success: true,
-      balance: req.blockchain.getBalance(address, token || "LABORY")
+      balance: req.blockchain.getBalance(a, t)
     })
 
   } catch (err) {

@@ -1,4 +1,6 @@
 const { verifySignature, deriveAddress } = require("../../core/crypto")
+const { parseAmount, assertToken, assertAddress } = require("../../core/amounts")
+const { normalizeTx } = require("../../core/txFormat")
 
 exports.send = (req, res) => {
   req.blockchain.addTransaction(req.tx)
@@ -10,9 +12,15 @@ exports.send = (req, res) => {
 }
 
 exports.verify = (req, res) => {
-  const tx = req.body
+  let tx
+  try {
+    tx = normalizeTx(req.body)
+  } catch (err) {
+    return res.status(400).json({ success: false, error: err.message })
+  }
 
   const checks = {
+    formatValid: false,
     signatureValid: false,
     addressMatches: false,
     nonceValid: false,
@@ -20,12 +28,21 @@ exports.verify = (req, res) => {
   }
 
   try {
+    if (!tx || typeof tx !== "object") throw new Error("MISSING_TRANSACTION")
+    if (tx.type !== "transfer") throw new Error("INVALID_TX_TYPE")
+
+    assertAddress(tx.from)
+    assertAddress(tx.to)
+    const amount = parseAmount(tx.amount)
+    const token = assertToken(tx.token)
+    checks.formatValid = true
+
     checks.signatureValid = verifySignature(tx)
     checks.addressMatches = deriveAddress(tx.publicKey) === tx.from
     checks.nonceValid = tx.nonce === req.blockchain.getNonce(tx.from)
-    checks.sufficientBalance = req.blockchain.getBalance(tx.from, tx.token) >= tx.amount
+    checks.sufficientBalance = req.blockchain.getBalance(tx.from, token) >= amount
   } catch (err) {
-    // cualquier campo faltante deja los checks en false
+    // cualquier campo faltante o monto inválido deja los checks en false
   }
 
   const valid = Object.values(checks).every(Boolean)

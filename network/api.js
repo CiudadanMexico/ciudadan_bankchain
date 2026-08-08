@@ -1,13 +1,21 @@
 const express = require("express")
 
+const { logger } = require("./middlewares/logger")
 const walletRoutes = require("./routes/wallet.routes")
 const transactionRoutes = require("./routes/transaction.routes")
 const blockchainRoutes = require("./routes/blockchain.routes")
 const assetRoutes = require("./routes/asset.routes")
+const payoutRoutes = require("./routes/payout.routes")
+const paymentRoutes = require("./routes/payment.routes")
+const agencyRoutes = require("./routes/agency.routes")
+const tokenRoutes = require("./routes/token.routes")
 
 function createAPI(blockchain, nodeWallet) {
   const app = express()
   app.use(express.json())
+
+  // 📝 Logging de cada request
+  app.use(logger)
 
   // Inyectamos blockchain y nodeWallet en req
   app.use((req, res, next) => {
@@ -20,6 +28,10 @@ function createAPI(blockchain, nodeWallet) {
   app.use("/tx", transactionRoutes)
   app.use("/", blockchainRoutes)
   app.use("/assets", assetRoutes)
+  app.use("/payouts", payoutRoutes)
+  app.use("/payments", paymentRoutes)
+  app.use("/agencies", agencyRoutes)
+  app.use("/tokens", tokenRoutes)
 
   return app
 }

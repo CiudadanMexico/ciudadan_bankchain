@@ -21,3 +21,6 @@ nohup.out
 coverage/
 .nyc_output/
 tmp/
+
+# datos del ledger (SQLite)
+data/

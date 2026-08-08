@@ -1,10 +1,28 @@
+// Bootstrap: siembra saldos iniciales on-chain y los persiste en el ledger.
+require("dotenv").config()
+const path = require("path")
 const Blockchain = require("../core/blockchain")
+const Store = require("../core/store")
+const loadOrCreateWallet = require("../utils/nodeWallet")
 
-const blockchain = new Blockchain()
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, "..", "data", "ledger.sqlite")
 
-const ADDRESS_A = "0x1ae18f80f94a017d479e30d6bb70d4ee8bd64b06"
+const store = new Store(DB_PATH)
+const nodeWallet = loadOrCreateWallet()
+const blockchain = new Blockchain(nodeWallet, store)
 
-blockchain.mint(ADDRESS_A, 1000, "CIT")
+const SEEDS = [
+  { address: nodeWallet.address, amount: 100000, token: "LABORY" },
+  { address: nodeWallet.address, amount: 50000, token: "CIT" }
+]
 
-console.log("Balance inicial asignado:")
-console.log(blockchain.balances)
+for (const s of SEEDS) {
+  blockchain.mint(s.address, s.amount, s.token)
+}
+
+console.log("Bootstrap completado:")
+console.log("  nodo LABORY:", blockchain.getBalance(nodeWallet.address, "LABORY"))
+console.log("  nodo CIT:   ", blockchain.getBalance(nodeWallet.address, "CIT"))
+console.log("  bloques:    ", blockchain.chain.length)
+
+store.close()
