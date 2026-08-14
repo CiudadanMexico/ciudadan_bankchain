@@ -11,6 +11,7 @@ const adminRateLimit = createRateLimit({
 })
 
 router.get("/", wallet.info)
+router.get("/:address/:token", wallet.balance)
 router.post("/mint-test", requireAdmin, adminRateLimit, wallet.mintTest)
 
 module.exports = router
