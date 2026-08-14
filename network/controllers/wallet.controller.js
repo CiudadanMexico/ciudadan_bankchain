@@ -11,6 +11,31 @@ exports.info = (req, res) => {
   })
 }
 
+exports.balance = (req, res) => {
+  try {
+    const { address, token } = req.params
+
+    const a = assertAddress(address)
+    const t = assertToken((token || "LABORY").toUpperCase())
+
+    res.json({
+      success: true,
+      data: {
+        address: a,
+        token: t,
+        balance: req.blockchain.getBalance(a, t),
+        nonce: req.blockchain.getNonce(a)
+      }
+    })
+
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      error: err.message
+    })
+  }
+}
+
 exports.mintTest = (req, res) => {
   try {
     const { address, amount, token } = req.body
