@@ -7,7 +7,10 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "bootstrap": "node scripts/bootstrap.js",
-    "smoke": "node scripts/smoke.js"
+    "smoke": "node scripts/smoke.js",
+    "demo": "bash scripts/demo.sh",
+    "client": "node scripts/client.js",
+    "reset": "node scripts/reset.js"
   },
   "keywords": [],
   "author": "",
@@ -17,8 +20,7 @@
     "crypto-js": "^4.2.0",
     "dotenv": "^17.3.1",
     "elliptic": "^6.6.1",
-    "express": "^5.2.1",
-    "uuid": "^13.0.0"
+    "express": "^5.2.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
