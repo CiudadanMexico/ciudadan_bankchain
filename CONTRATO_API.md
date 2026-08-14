@@ -1,32 +1,33 @@
 # Bankchain — Contrato de API v1
 
-> Documento que **congela** el contrato técnico de `ciudadan_bankchain` (Fase 0 del roadmap).
-> Estado: **v1 · congelado** · Última actualización: 07/08/2026
-> Alcance: consumidores externos (Strapi, backend provisional, microservicios).
+> Este documento congela el contrato técnico de `ciudadan_bankchain` (fue la Fase 0 del roadmap). A partir de acá, los consumidores externos (Strapi, el backend provisional, cualquier microservicio) saben con qué se van a encontrar.
+> **Estado:** v1 · congelado · Última actualización: 07/08/2026
 
 ---
 
 ## 1. Decisión de arquitectura (Fase 0)
 
-- **Nodo único autoritativo**: single-node, sin red de validadores (decisiones §4 de CONTEXTO_PROYECTO.md).
-- **Monolito modular**: una sola aplicación Node/Express modular por dominio (wallet, tx, blockchain, assets, payouts, payments, agencies, tokens). **No** se adoptan microservicios por ahora.
-- **Strapi = capa administrativa**: catálogo, configuración, backoffice, reportes. **Nunca** ledger ni private keys.
-- La **blockchain es la única fuente de verdad** de balances y transacciones (ledger append-only).
-- Los balances se **derivan** de las transacciones (snapshot es solo caché, siempre reconstruible).
+Antes de escribir una sola línea de código resolví cómo iba a convivir esto con lo demás, y quedó así:
 
-## 2. Principios de contrato
+- **Nodo único autoritativo.** Un solo nodo, sin red de validadores. No tiene sentido montar consenso para el tamaño de la cooperativa (detalle en CONTEXTO_PROYECTO.md §4).
+- **Monolito modular.** Una sola aplicación Node/Express dividida por dominio (wallet, tx, blockchain, assets, payouts, payments, agencies, tokens). Nada de microservicios por ahora.
+- **Strapi = capa administrativa.** Catálogo, configuración, backoffice, reportes. **Nunca** ledger, **nunca** private keys.
+- **La blockchain es la única fuente de verdad** de balances y transacciones (ledger append-only).
+- Los balances se **derivan** de las transacciones; el snapshot es solo caché y siempre se puede reconstruir.
 
-1. **Montos**: string de dígitos enteros (o número entero seguro). **Nunca float.** `parseAmount` rechaza floats/negativos/no-numéricos.
-2. **Nonce por wallet**: entero, incrementa en cada `transfer`. Anti-replay.
-3. **Firma**: se genera **localmente** en el cliente; el servidor verifica. Firma local = la capa del usuario que firma con su private key.
-4. **Timestamps**: `timestamp` en ms (epoch). El servidor no confía en el cliente para balances, solo para intención.
-5. **Idempotencia**: `origin_id` (earn) y `positionId` (tokens) garantizan dedup on-chain.
-6. **Respuestas**: siempre `{ success: boolean, data? }` o `{ success: false, error: "<CÓDIGO>" }`. Códigos de error en mayúsculas y estables (p.ej. `INVALID_SIGNATURE`).
-7. **Ledger append-only**: no se editan ni borran transacciones históricas.
+## 2. Principios del contrato
+
+1. **Montos:** string de dígitos enteros (o número entero seguro). **Jamás float.** `parseAmount` rechaza floats, negativos y no-numéricos.
+2. **Nonce por wallet:** entero que incrementa en cada `transfer`. Es el anti-replay.
+3. **Firma:** se genera **localmente** en el cliente (la capa del usuario que firma con su private key); el servidor solo verifica.
+4. **Timestamps:** en ms (epoch). El servidor no confía en el cliente para balances, solo para la intención de la transacción.
+5. **Idempotencia:** `origin_id` (earn) y `positionId` (tokens) garantizan que un duplicado no se pague dos veces on-chain.
+6. **Respuestas:** siempre `{ success: boolean, data? }` o `{ success: false, error: "<CÓDIGO>" }`. Los códigos de error van en mayúsculas y son estables (p. ej. `INVALID_SIGNATURE`).
+7. **Ledger append-only:** no se editan ni borran transacciones históricas.
 
 ## 3. Formato de transacción v1
 
-El endpoint `/tx/send` acepta **dos representaciones equivalentes**:
+`/tx/send` acepta **dos representaciones equivalentes**; internamente el ledger siempre normaliza a la forma plana (`core/txFormat.js`), así que da igual cuál manden.
 
 ### 3.1 Forma plana
 
@@ -62,25 +63,25 @@ El endpoint `/tx/send` acepta **dos representaciones equivalentes**:
 }
 ```
 
-Internamente el ledger siempre normaliza a la forma plana (`core/txFormat.js`).
+### 3.3 Campos que se firman
 
-### 3.3 Campos del hash firmado
-
-`hashTransaction` cubre **exactamente** estos 7 campos (en este orden canónico):
+`hashTransaction` cubre **exactamente** estos campos y en este orden canónico:
 
 ```
 type · from · to · amount (string) · token · nonce · publicKey · timestamp
 ```
 
-- `signature` **no** forma parte del hash.
-- Firma: ECDSA `secp256k1`, `sign(hashTransaction(payload))`, serialización DER hex.
+Notas que hay que tener presentes:
+
+- La `signature` **no** forma parte del hash.
+- Firma: ECDSA `secp256k1`, `sign(hashTransaction(payload))`, serializada en DER hex.
 - `address = "0x" + sha256(publicKey).slice(-40)`.
 
-### 3.4 Reglas de validación (orden)
+### 3.4 Orden de validación
 
 1. Tipo: solo `transfer` desde clientes.
 2. `from`/`to` direcciones válidas (40 hex + prefijo `0x`).
-3. `amount` entero positivo, `token` del catálogo.
+3. `amount` entero positivo y `token` del catálogo.
 4. `verifySignature(tx)` OK.
 5. `deriveAddress(publicKey) === from`.
 6. `nonce === nonce actual de from`.
@@ -105,7 +106,7 @@ type · from · to · amount (string) · token · nonce · publicKey · timestam
 | GET | `/tokens/contracts` | catálogo de contratos CIT |
 | GET | `/tokens/positions?owner=` | posiciones de inversión |
 
-### 4.2 Admin (requieren `x-admin-token`, rate-limit)
+### 4.2 Admin (requieren `x-admin-token`, con rate-limit)
 
 | Método | Ruta | Descripción |
 |---|---|---|
@@ -114,7 +115,7 @@ type · from · to · amount (string) · token · nonce · publicKey · timestam
 | POST | `/block/apply` | aceptar bloque externo |
 | POST | `/payouts/run` · `/payouts/schedule` | distribuir desde tesorería / programar |
 | DELETE | `/payouts/:id` | cancelar schedule |
-| GET | `/audit` | conciliación replay del ledger vs estado |
+| GET | `/audit` | conciliación: replay del ledger vs estado actual |
 | POST | `/agencies` | registrar/actualizar agencia |
 | POST | `/agencies/sync` | sync desde Strapi |
 | POST | `/payments/subsidized` | pago con subsidio (§4.3) |
@@ -135,7 +136,7 @@ type · from · to · amount (string) · token · nonce · publicKey · timestam
 }
 ```
 
-Validación: `nivel_subsidio` de la agencia == `subsidio / monto_laborys_usuario`. Debita usuario + agencia → destino en un solo bloque atómico (2 txs `payment`).
+Validación: el `nivel_subsidio` de la agencia debe ser `subsidio / monto_laborys_usuario` (en el ejemplo, 45 / 15 = 3). El nodo debita usuario + agencia y acredita al destino en un solo bloque atómico (2 transacciones `payment`).
 
 ### 4.4 earn_laborys
 
@@ -149,11 +150,11 @@ Validación: `nivel_subsidio` de la agencia == `subsidio / monto_laborys_usuario
 }
 ```
 
-Idempotente por `origin_id` (tabla `claims`). Duplicado → `ORIGIN_ALREADY_EARNED`.
+Idempotente por `origin_id` (tabla `claims`). Si llega un duplicado responde `ORIGIN_ALREADY_EARNED`.
 
 ### 4.5 Tokens de inversión (CIT)
 
-Contrato:
+El contrato de inversión:
 
 ```json
 {
@@ -168,20 +169,20 @@ Contrato:
 }
 ```
 
-Reglas: `factorTarget ∈ {2,3,4,7}`. Rendimiento neto por período =
-`principal * (fixedRate + variableRate) * (1 - commissionRate)`, cap en
-`principal * (factorTarget - 1)`. Al alcanzar el cap → madura y devuelve el principal
-(desde la reserva). Txs on-chain: `tokenlock` (bloqueo), `tokenpayout` (rendimiento desde tesorería), `tokenreturn` (principal).
+Reglas:
 
-### 4.6 Error: Strapi sync
+- `factorTarget` solo puede ser 2, 3, 4 o 7.
+- Rendimiento neto por período = `principal * (fixedRate + variableRate) * (1 - commissionRate)`, con tope en `principal * (factorTarget - 1)`.
+- Al alcanzar el tope, el contrato **madura** y se devuelve el principal (sale de la reserva).
+- Transacciones on-chain involucradas: `tokenlock` (bloqueo del principal), `tokenpayout` (rendimiento, pagado desde tesorería) y `tokenreturn` (devolución del principal).
 
-`POST /agencies/sync` consume `{STRAPI_URL}/api/agencias` (paginado, Bearer `STRAPI_TOKEN`),
-mapea `wallet_address` → `address`, `nivel_subsidio` con fallback configurable.
-Sin `STRAPI_URL` → `502 STRAPI_URL_REQUIRED`.
+### 4.6 Sync de Strapi
+
+`POST /agencies/sync` consume `{STRAPI_URL}/api/agencias` (paginado, con Bearer `STRAPI_TOKEN`), mapea `wallet_address` → `address` y usa `nivel_subsidio` con fallback configurable. Si no hay `STRAPI_URL` configurado responde `502 STRAPI_URL_REQUIRED`.
 
 ## 5. Compatibilidad y evolución
 
 - Esta versión **acepta** la forma plana y la wrapper; ninguna se depreca en v1.
-- Cualquier cambio de campos firmados en `hashTransaction` es **breaking**: requiere nueva versión del contrato y re-firma de clientes.
-- `origin_id`, `positionId` y `agencia_id` son identificadores estables (uuid / id Strapi).
-- Migración a microservicios o validadores (Fase 5) no debe cambiar estos payloads (el contrato los protege).
+- Cualquier cambio en los campos firmados de `hashTransaction` es **breaking**: implica nueva versión del contrato y que los clientes vuelvan a firmar.
+- `origin_id`, `positionId` y `agencia_id` son identificadores estables (uuid / id de Strapi).
+- Cuando llegue el momento de migrar a microservicios o validadores (Fase 5), estos payloads no deberían cambiar: para eso existe el contrato.

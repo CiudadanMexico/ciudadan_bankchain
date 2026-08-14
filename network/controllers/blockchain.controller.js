@@ -30,17 +30,21 @@ exports.audit = (req, res) => {
 exports.getHistory = (req, res) => {
   try {
     const txs = req.blockchain.getTransactionHistory(req.params.address)
-    res.json({ success: true, data: txs })
+    const limit = parseInt(req.query.limit, 10)
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0)
+    const items = Number.isInteger(limit) && limit > 0 ? txs.slice(offset, offset + limit) : txs
+    res.json({ success: true, data: items, total: txs.length })
   } catch (err) {
     res.status(400).json({ success: false, error: err.message })
   }
 }
 
 exports.getChain = (req, res) => {
-  res.json({
-    success: true,
-    data: req.blockchain.chain
-  })
+  const chain = req.blockchain.chain
+  const limit = parseInt(req.query.limit, 10)
+  const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0)
+  const blocks = Number.isInteger(limit) && limit > 0 ? chain.slice(offset, offset + limit) : chain
+  res.json({ success: true, data: blocks, total: chain.length })
 }
 
 exports.getMempool = (req, res) => {
