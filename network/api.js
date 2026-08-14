@@ -12,12 +12,10 @@ const tokenRoutes = require("./routes/token.routes")
 
 function createAPI(blockchain, nodeWallet) {
   const app = express()
-  app.use(express.json())
+  app.use(express.json({ limit: "100kb" }))
 
-  // 📝 Logging de cada request
   app.use(logger)
 
-  // Inyectamos blockchain y nodeWallet en req
   app.use((req, res, next) => {
     req.blockchain = blockchain
     req.nodeWallet = nodeWallet
