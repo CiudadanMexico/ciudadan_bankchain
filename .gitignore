@@ -2,9 +2,6 @@
 node_modules/
 
 # entorno y secretos (NUNCA subir)
-.env
-.env.*
-!.env.example
 
 # identidad del nodo
 nodeWallet.json
@@ -22,5 +19,12 @@ coverage/
 .nyc_output/
 tmp/
 
+# wallets de cliente de demo (llaves privadas; NO subir)
+demo/clients.json
+
 # datos del ledger (SQLite)
 data/
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+config.bat
